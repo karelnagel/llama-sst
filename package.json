@@ -4,12 +4,14 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" \u0026\u0026 exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@pulumi/aws-apigateway": "^2.4.0",
+    "@pulumi/docker": "^4.5.3",
     "sst": "ion"
   },
   "devDependencies": {
