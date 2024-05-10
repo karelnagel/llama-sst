@@ -13,7 +13,7 @@ export default $config({
     };
   },
   async run() {
-    const repo = new aws.ecr.Repository("Repository", { name: "llama-sst" });
+    const repo = new aws.ecr.Repository("Repository", { name: "llama-sst", forceDelete: true });
 
     repo.repositoryUrl.apply(console.log);
 
@@ -22,7 +22,7 @@ export default $config({
       const image = new docker.Image("Image", {
         build: {
           context: "/Users/karel/Documents/llama-sst",
-          platform: "linux/amd64",
+          platform: "linux/arm64",
         },
         imageName: repo.repositoryUrl,
         registry: {
@@ -38,9 +38,7 @@ export default $config({
           Statement: [
             {
               Effect: "Allow",
-              Principal: {
-                Service: "lambda.amazonaws.com",
-              },
+              Principal: { Service: "lambda.amazonaws.com" },
               Action: "sts:AssumeRole",
             },
           ],
@@ -48,18 +46,25 @@ export default $config({
         managedPolicyArns: ["arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"],
       });
 
-      const lambdaFunction = new aws.lambda.Function("Function", {
-        packageType: "Image",
-        imageUri: $interpolate`${image.imageName}:latest`,
-        role: role.arn,
-        imageConfig: {
-          entryPoints: ["index.handler"],
+      const lambdaFunction = new aws.lambda.Function(
+        "Function",
+        {
+          packageType: "Image",
+          imageUri: $interpolate`${image.imageName}:latest`,
+          role: role.arn,
+          architectures: ["arm64"],
         },
-      });
-      const api = new apigateway.RestAPI("RestApi", {
-        stageName: "dev",
-        routes: [{ path: "/", method: "GET", eventHandler: lambdaFunction }],
-      });
+        { dependsOn: [image] }
+      );
+      lambdaFunction.name.apply(console.log);
+      const api = new apigateway.RestAPI(
+        "RestApi",
+        {
+          stageName: "dev",
+          routes: [{ path: "/", method: "GET", eventHandler: lambdaFunction }],
+        },
+        { dependsOn: [lambdaFunction] }
+      );
       api.url.apply(console.log);
     });
   },
